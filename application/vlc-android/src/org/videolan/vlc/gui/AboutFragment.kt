@@ -24,13 +24,19 @@ import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.res.Configuration
+import android.media.MediaCodec
+import android.media.MediaCodecInfo
+import android.media.MediaCodecList
+import android.os.Build
 import android.os.Bundle
 import android.util.Base64
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.net.toUri
 import androidx.core.widget.NestedScrollView
@@ -39,6 +45,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
+import kotlinx.android.synthetic.main.about_main.view.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.launch
@@ -56,14 +63,20 @@ private const val MODE_TOTAL = 2 // Number of audio browser modes
 @ExperimentalCoroutinesApi
 class AboutFragment : Fragment() {
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
         return inflater.inflate(R.layout.about, container, false)
     }
 
+    @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        (activity as? AppCompatActivity)?.supportActionBar?.title = "VLC ${BuildConfig.VLC_VERSION_NAME}"
+        (activity as? AppCompatActivity)?.supportActionBar?.title =
+            "VLC ${BuildConfig.VLC_VERSION_NAME}"
 
         requireActivity().findViewById<FloatingActionButton>(R.id.fab).setGone()
         val aboutMain = view.findViewById<NestedScrollView>(R.id.about_main)
@@ -71,7 +84,7 @@ class AboutFragment : Fragment() {
         val revision = getString(R.string.build_revision)
 
         val lists = arrayOf(aboutMain, webView)
-        val titles = arrayOf(getString(R.string.about), getString(R.string.licence))
+        val titles = arrayOf("解码器列表", getString(R.string.licence))
         val viewPager = view.findViewById<ViewPager>(R.id.pager).apply {
             offscreenPageLimit = MODE_TOTAL - 1
             adapter = AudioPagerAdapter(lists as Array<View>, titles)
@@ -81,6 +94,10 @@ class AboutFragment : Fragment() {
             setupWithViewPager(viewPager)
         }
         lifecycleScope.launch {
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+                aboutMain.tv_media_codec_list.text = readMediaCodecList()
+
             UiTools.fillAboutView(view)
             webView.loadUrl("file:///android_asset/license.htm")
 
@@ -89,17 +106,20 @@ class AboutFragment : Fragment() {
                 override fun onPageFinished(view: WebView, url: String) {
                     if (url.startsWith("file:///android_asset")) {
                         // Inject CSS when page is done loading
-                        injectCSS(webView, when (context?.resources?.configuration?.uiMode?.and(Configuration.UI_MODE_NIGHT_MASK)) {
-                            Configuration.UI_MODE_NIGHT_YES -> {
-                                "license_dark.css"
+                        injectCSS(
+                            webView,
+                            when (context?.resources?.configuration?.uiMode?.and(Configuration.UI_MODE_NIGHT_MASK)) {
+                                Configuration.UI_MODE_NIGHT_YES -> {
+                                    "license_dark.css"
+                                }
+                                Configuration.UI_MODE_NIGHT_NO -> {
+                                    "license_light.css"
+                                }
+                                else -> {
+                                    "license_light.css"
+                                }
                             }
-                            Configuration.UI_MODE_NIGHT_NO -> {
-                                "license_light.css"
-                            }
-                            else -> {
-                                "license_light.css"
-                            }
-                        })
+                        )
                         injectCommitRevision(webView, revision)
                     }
                     super.onPageFinished(view, url)
@@ -123,6 +143,26 @@ class AboutFragment : Fragment() {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
+    private fun readMediaCodecList(): String {
+        Log.i(TAG, "解码器列表：")
+
+        var result = ""
+        for (codec in MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos) {
+            if (!codec.isEncoder) {
+                result += if (codec.isSoftwareOnly)
+                {
+                    Log.i(TAG, "软解-> ${codec.name}")
+                    "软解-> ${codec.name}    原生:${if (!codec.isVendor) "是" else "否"}\n"
+                } else {
+                    Log.i(TAG, "硬解-> ${codec.name}")
+                    "硬解-------> ${codec.name}    原生:${if (!codec.isVendor) "是" else "否"}\n"
+                }
+            }
+        }
+        return result
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     private fun injectCSS(webView: WebView, cssAsset: String) {
         try {
@@ -132,14 +172,16 @@ class AboutFragment : Fragment() {
             inputStream.read(buffer)
             inputStream.close()
             val encoded = Base64.encodeToString(buffer, Base64.NO_WRAP)
-            webView.loadUrl("javascript:(function() {" +
-                    "var parent = document.getElementsByTagName('head').item(0);" +
-                    "var style = document.createElement('style');" +
-                    "style.type = 'text/css';" +
-                    // Tell the browser to BASE64-decode the string into your script !!!
-                    "style.innerHTML = window.atob('" + encoded + "');" +
-                    "parent.appendChild(style);" +
-                    "})()")
+            webView.loadUrl(
+                "javascript:(function() {" +
+                        "var parent = document.getElementsByTagName('head').item(0);" +
+                        "var style = document.createElement('style');" +
+                        "style.type = 'text/css';" +
+                        // Tell the browser to BASE64-decode the string into your script !!!
+                        "style.innerHTML = window.atob('" + encoded + "');" +
+                        "parent.appendChild(style);" +
+                        "})()"
+            )
 
             webView.settings.javaScriptEnabled = false
         } catch (e: Exception) {
@@ -152,12 +194,14 @@ class AboutFragment : Fragment() {
         try {
             webView.settings.javaScriptEnabled = true
 
-            webView.loadUrl("javascript:(function() {" +
-                    "var link = document.getElementById('revision_link');" +
-                    "var newLink = link.href.replace('!COMMITID!', '$revision');" +
-                    "link.setAttribute('href', newLink);" +
-                    "link.innerText = newLink;" +
-                    "})()")
+            webView.loadUrl(
+                "javascript:(function() {" +
+                        "var link = document.getElementById('revision_link');" +
+                        "var newLink = link.href.replace('!COMMITID!', '$revision');" +
+                        "link.setAttribute('href', newLink);" +
+                        "link.innerText = newLink;" +
+                        "})()"
+            )
 
             webView.settings.javaScriptEnabled = false
         } catch (e: Exception) {

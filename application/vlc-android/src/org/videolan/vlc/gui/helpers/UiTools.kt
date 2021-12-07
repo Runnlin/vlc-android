@@ -337,33 +337,33 @@ object UiTools {
 
 
     fun fillAboutView(v: View) {
-        val link = v.findViewById<TextView>(R.id.main_link)
-        link.text = HtmlCompat.fromHtml(v.context.getString(R.string.about_link),
-            HtmlCompat.FROM_HTML_MODE_LEGACY)
+//        val link = v.findViewById<TextView>(R.id.main_link)
+//        link.text = HtmlCompat.fromHtml(v.context.getString(R.string.about_link),
+//            HtmlCompat.FROM_HTML_MODE_LEGACY)
 
-        val feedback : TextView= v.findViewById(R.id.feedback)
-        feedback.text = HtmlCompat.fromHtml(v.context.getString(R.string.feedback_link,
-                v.context.getString(R.string.feedback_forum)), HtmlCompat.FROM_HTML_MODE_LEGACY)
-        feedback.movementMethod = LinkMovementMethod.getInstance()
+//        val feedback : TextView= v.findViewById(R.id.feedback)
+//        feedback.text = HtmlCompat.fromHtml(v.context.getString(R.string.feedback_link,
+//                v.context.getString(R.string.feedback_forum)), HtmlCompat.FROM_HTML_MODE_LEGACY)
+//        feedback.movementMethod = LinkMovementMethod.getInstance()
 
         val revision = v.context.getString(R.string.build_revision) + " VLC: " + v.context.getString(R.string.build_vlc_revision)
         val builddate = v.context.getString(R.string.build_time)
         val builder = v.context.getString(R.string.build_host)
 
-        val compiled = v.findViewById<TextView>(R.id.main_compiled)
-        compiled.text = "$builder ($builddate)"
+//        val compiled = v.findViewById<TextView>(R.id.main_compiled)
+//        compiled.text = "$builder ($builddate)"
         val textViewRev = v.findViewById<TextView>(R.id.main_revision)
         textViewRev.text = v.context.getString(R.string.revision) + " " + revision + " (" + builddate + ") "
 
-        val logo = v.findViewById<ImageView>(R.id.logo)
-        logo.setOnClickListener {
-            val anim = AnimationSet(true)
-            val rotate = RotateAnimation(0f, 360f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f)
-            rotate.duration = 800
-            rotate.interpolator = DecelerateInterpolator()
-            anim.addAnimation(rotate)
-            logo.startAnimation(anim)
-        }
+//        val logo = v.findViewById<ImageView>(R.id.logo)
+//        logo.setOnClickListener {
+//            val anim = AnimationSet(true)
+//            val rotate = RotateAnimation(0f, 360f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f)
+//            rotate.duration = 800
+//            rotate.interpolator = DecelerateInterpolator()
+//            anim.addAnimation(rotate)
+//            logo.startAnimation(anim)
+//        }
     }
 
     fun setKeyboardVisibility(v: View?, show: Boolean) {
